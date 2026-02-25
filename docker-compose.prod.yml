@@ -1,0 +1,33 @@
+version: "3.9"
+
+services:
+  frontend:
+    build: ./frontend
+    restart: always
+    networks:
+      - appnet
+
+  backend:
+    build: ./backend
+    restart: always
+    networks:
+      - appnet
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/certs:/etc/letsencrypt:ro
+    depends_on:
+      - frontend
+      - backend
+    restart: always
+    networks:
+      - appnet
+
+networks:
+  appnet:
+    driver: bridge
