@@ -13,6 +13,8 @@ from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, F
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker, Session, declarative_base
 from sqlalchemy.sql import func
+import bcrypt
+
 
 load_dotenv()
 
@@ -135,14 +137,19 @@ def get_db():
 @app.post("/login")
 def login(username: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == username).first()
+
     if not user:
-        user = User(username=username, password=password)
+        hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+        user = User(username=username, password=hashed)
         db.add(user)
         db.commit()
         db.refresh(user)
-    if user.password != password:
-        raise HTTPException(status_code=400, detail="Sai mật khẩu")
+    else:
+        if not bcrypt.checkpw(password.encode(), user.password.encode()):
+            raise HTTPException(status_code=400, detail="Sai mật khẩu")
+
     return {"user_id": user.id, "username": user.username}
+
 
 @app.get("/diaries")
 def get_diaries(db: Session = Depends(get_db)):
