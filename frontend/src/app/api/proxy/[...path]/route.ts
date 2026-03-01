@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "https://journal-ayey.onrender.com";
+const BACKEND_URL = process.env.BACKEND_URL || "https://journal-ayey.onrender.com";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export async function GET(request: NextRequest, context: any) {
@@ -11,7 +11,8 @@ export async function GET(request: NextRequest, context: any) {
     const res = await fetch(url);
     const data = await res.json();
     return NextResponse.json(data, { status: res.status });
-  } catch {
+  } catch (e) {
+    console.error('[proxy GET error]', url, e);
     return NextResponse.json({ error: 'Backend unreachable' }, { status: 502 });
   }
 }
@@ -25,22 +26,22 @@ export async function POST(request: NextRequest, context: any) {
     const contentType = request.headers.get('content-type') || '';
 
     const forwardHeaders: Record<string, string> = {};
-
-    // Forward Content-Type kèm boundary để FastAPI parse được FormData
     if (contentType) forwardHeaders['Content-Type'] = contentType;
     if (authHeader) forwardHeaders['Authorization'] = authHeader;
 
-    const body = await request.arrayBuffer();
-
+    // Stream trực tiếp sang backend — không buffer vào memory, không giới hạn size
     const res = await fetch(url, {
       method: 'POST',
       headers: forwardHeaders,
-      body,
-    });
+      body: request.body,
+      // @ts-ignore — cần thiết để tắt auto body consumption của Node.js fetch
+      duplex: 'half',
+    } as any);
 
     const data = await res.json();
     return NextResponse.json(data, { status: res.status });
-  } catch {
+  } catch (e) {
+    console.error('[proxy POST error]', url, e);
     return NextResponse.json({ error: 'Backend unreachable' }, { status: 502 });
   }
 }
