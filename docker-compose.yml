@@ -7,17 +7,13 @@ services:
     volumes:
       - ./backend:/app
     env_file:
-      - .env
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
-    sysctls:
-      - net.ipv6.conf.all.disable_ipv6=1
-      - net.ipv6.conf.default.disable_ipv6=1
-      - net.ipv6.conf.lo.disable_ipv6=1
+      - ./backend/.env
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: http://backend:8000
     container_name: couple_frontend
     ports:
       - "3000:3000"
@@ -27,3 +23,4 @@ services:
     command: npm run dev
     environment:
       - CHOKIDAR_USEPOLLING=true
+      - NEXT_PUBLIC_API_URL=http://backend:8000
