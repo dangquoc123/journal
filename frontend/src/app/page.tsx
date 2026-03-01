@@ -6,6 +6,29 @@ import CameraCapture from './components/CameraCapture';
 // Browser luôn gọi qua Next.js proxy, tránh lỗi "backend:8000" không resolve được
 const API_URL = "/api/proxy";
 
+// Resize ảnh xuống tối đa 1200px và nén còn ~500KB trước khi upload
+function resizeImage(file: File, maxWidth = 1200, quality = 0.7): Promise<File> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, maxWidth / img.width);
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(
+        (blob) => resolve(new File([blob!], file.name, { type: 'image/jpeg' })),
+        'image/jpeg',
+        quality
+      );
+    };
+    img.src = url;
+  });
+}
+
+
 export default function Home() {
   const [user, setUser] = useState<any>(null);
   const [diaries, setDiaries] = useState<any[]>([]);
@@ -84,7 +107,10 @@ export default function Home() {
     fd.append('content', form.content);
     // KHÔNG gửi user_id qua form, backend lấy từ JWT token
 
-    if (file) fd.append('file', file);
+    if (file) {
+      const resized = await resizeImage(file);
+      fd.append('file', resized);
+    }
 
     try {
       const res = await fetch(`${API_URL}/diaries`, {
@@ -196,7 +222,16 @@ export default function Home() {
             />
 
             {preview && (
-              <img src={preview} className="w-full h-40 object-cover rounded" alt="Preview" />
+              <div className="relative">
+                <img src={preview} className="w-full h-40 object-cover rounded" alt="Preview" />
+                <button
+                  type="button"
+                  onClick={() => { setFile(null); setPreview(null); }}
+                  className="absolute top-2 right-2 bg-black bg-opacity-60 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-opacity-80"
+                >
+                  ✕
+                </button>
+              </div>
             )}
 
             <div className="flex justify-between items-center pt-2 border-t">

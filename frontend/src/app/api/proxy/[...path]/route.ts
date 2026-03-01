@@ -29,14 +29,13 @@ export async function POST(request: NextRequest, context: any) {
     if (contentType) forwardHeaders['Content-Type'] = contentType;
     if (authHeader) forwardHeaders['Authorization'] = authHeader;
 
-    // Stream trực tiếp sang backend — không buffer vào memory, không giới hạn size
+    const body = await request.arrayBuffer();
+
     const res = await fetch(url, {
       method: 'POST',
       headers: forwardHeaders,
-      body: request.body,
-      // @ts-ignore — cần thiết để tắt auto body consumption của Node.js fetch
-      duplex: 'half',
-    } as any);
+      body,
+    });
 
     const data = await res.json();
     return NextResponse.json(data, { status: res.status });
